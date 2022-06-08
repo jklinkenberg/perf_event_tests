@@ -66,8 +66,8 @@ validate_record_sample: validate_record_sample.o \
 sample_branch_stack: sample_branch_stack.o \
 		$(LIB)/libhelper.a
 
-sample_data_src: sample_data_src.o \
-		$(LIB)/libhelper.a
+sample_data_src: $(LIB)/libhelper.a
+		$(CC) $(CFLAGS) $(CPPFLAGS) -o sample_data_src sample_data_src.c $(LIB)/libhelper.a $(LDFLAGS)
 
 sample_regs_intr: sample_regs_intr.o \
 		$(LIB)/libhelper.a
