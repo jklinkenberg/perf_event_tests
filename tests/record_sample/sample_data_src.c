@@ -23,8 +23,8 @@
 #include <sys/ioctl.h>
 #include <asm/unistd.h>
 #include <sys/prctl.h>
-
-#include "perf_event.h"
+#include <perfmon/pfmlib_perf_event.h>
+//#include "perf_event.h"
 #include "test_utils.h"
 #include "perf_helpers.h"
 #include "matrix_multiply.h"
@@ -92,7 +92,27 @@ int main(int argc, char **argv) {
 	/* Set up Appropriate Event */
 	memset(&pe,0,sizeof(struct perf_event_attr));
 
-	result=get_latency_load_event(&pe.config,&pe.config1,
+    pfm_perf_encode_arg_t arg;
+    memset(&arg, 0, sizeof(arg));
+    arg.size = sizeof(pfm_perf_encode_arg_t);
+    arg.attr = &pe;
+    char *fstr;
+    arg.fstr = &fstr;
+
+    int curr_err;
+    curr_err = pfm_initialize();
+    if (curr_err != PFM_SUCCESS) {
+        fprintf(stderr, "Error during pfm_init\n");
+        exit(1);
+    }
+    curr_err = pfm_get_os_event_encoding("MEM_TRANS_RETIRED:LOAD_LATENCY:ldlat=3", PFM_PLM0 | PFM_PLM3, PFM_OS_PERF_EVENT, &arg);
+    if (curr_err != PFM_SUCCESS) {
+        fprintf(stderr, "Error during pfm_get_os_event\n");
+        exit(1);
+    }
+
+	/*
+    result=get_latency_load_event(&pe.config,&pe.config1,
 				&precise_ip,event_name);
 	if (result<0) {
 		if (!quiet) fprintf(stderr,"No load latency event available, trying instructions (probably will return 0)\n");
@@ -103,23 +123,21 @@ int main(int argc, char **argv) {
 		pe.type=PERF_TYPE_RAW;
 		if (!quiet) printf("Using event %s\n",event_name);
 	}
+    */
 
+    // Sampling parameters
 	pe.size=sizeof(struct perf_event_attr);
-	pe.precise_ip=precise_ip;
-
-        pe.size=sizeof(struct perf_event_attr);
-        pe.sample_period=SAMPLE_FREQUENCY;
-        pe.sample_type=PERF_SAMPLE_IP | PERF_SAMPLE_WEIGHT |
-			PERF_SAMPLE_DATA_SRC;
-
+    pe.sample_period=SAMPLE_FREQUENCY;
+    pe.sample_type=PERF_SAMPLE_IP | PERF_SAMPLE_WEIGHT | PERF_SAMPLE_DATA_SRC;
+    pe.precise_ip = 2;
 	global_sample_type=pe.sample_type;
 
-        pe.read_format=0;
-        pe.disabled=1;
-        pe.pinned=1;
-        pe.exclude_kernel=1;
-        pe.exclude_hv=1;
-        pe.wakeup_events=1;
+    pe.read_format=0;
+    pe.disabled=1;
+    pe.pinned=1;
+    pe.exclude_kernel=1;
+    pe.exclude_hv=1;
+    pe.wakeup_events=1;
 
 	arch_adjust_domain(&pe,quiet);
 
